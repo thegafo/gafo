@@ -1,0 +1,16 @@
+{
+  "name": "Gabe's Mac",
+  "scripts": {
+    "helloWorld": {
+      "description": "Print 'Hello World!' on the command line.",
+      "execute": "echo 'Hello World!'"
+    },
+    "helloName": {
+      "description": "Greet someone.",
+      "execute": "python hello.py",
+      "parameters": {
+        "name": "the name to greet"
+      }
+    }
+  }
+}
