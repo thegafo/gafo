@@ -1,0 +1,31 @@
+{
+  "name": "Gabe's Mac",
+  "scripts": {
+    "openGoogle": {
+      "description": "Open Google on Chrome",
+      "execute": "python open_google.py"
+    },
+    "openUrl": {
+      "description": "Open url",
+      "parameters": {
+        "url": "The url to open"
+      },
+      "execute": "python open_url.py"
+    },
+    "type": {
+      "description": "Type something",
+      "parameters": {
+        "text": "The text to type"
+      },
+      "execute": "python type.py"
+    },
+    "pressEnter": {
+      "description": "Press enter",
+      "execute": "python pressenter.py"
+    },
+    "pressTab": {
+      "description": "Press tab",
+      "execute": "python presstab.py"
+    }
+  }
+}
