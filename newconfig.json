@@ -1,0 +1,9 @@
+{
+  "name": "alksdjf",
+  "scripts": {
+    "count": {
+      "description": "",
+      "execute": "python count.py"
+    }
+  }
+}

@@ -15,8 +15,10 @@ var registeredScripts  = {};
 
 // establish DDP connection
 var ddpClient = new ddp({
-  host: "g.gafo.us",
-  port: 80
+  //host: "g.gafo.us",
+  //port: 80
+  host: "localhost",
+  port: 3000
 });
 
 if (process.argv.length < 3) {
@@ -110,7 +112,8 @@ function registerSlave(userId, sessionId, slaveConfiguration) {
 
     if (result == false) console.log("Error registering slave.");
 
-    registeredScripts = result;
+    registeredSlave = result;
+
   });
   subscribeToSlaveData(userId, sessionId);
   pulse(userId, sessionId);
@@ -147,6 +150,21 @@ function subscribeToSlaveData(userId, slaveId) {
   );
 
   ddpClient.subscribe(
+    'slave_peripherals',
+    [slaveId],
+    function () {
+      //console.log('subscribed to peripheral data');
+      var observer = ddpClient.observe("peripherals");
+      console.log("subscribed to peripherals")
+      // SHOULDNT CHANGE
+      observer.added = function(id, newValue) {
+      };
+      observer.changed = function(id, oldFields, clearedFields, newFields) {
+      };
+    }
+  );
+
+  ddpClient.subscribe(
     'slave_calls',
     [slaveId],
     function () {
@@ -155,7 +173,7 @@ function subscribeToSlaveData(userId, slaveId) {
       // when a new call is inserted
       observer.added = function(id, newValue) {
 
-        var scriptName = registeredScripts.scripts[newValue.scriptId];
+        var scriptName = registeredSlave.scripts[newValue.scriptId];
 
         // get function data
         var script = slaveConfiguration.scripts[scriptName];

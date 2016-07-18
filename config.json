@@ -9,5 +9,13 @@
       "description": "Get system temperature.",
       "execute": "/opt/vc/bin/vcgencmd measure_temp"
     }
+  },
+  "peripherals": {
+    "pir sensor": {
+      "uuid": "ce247aaa7180",
+      "service_uuid": "",
+      "read_characteristic_uuid": "",
+      "write_characteristic_uuid": ""
+    }
   }
 }
