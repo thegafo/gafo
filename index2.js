@@ -15,10 +15,10 @@ var registeredScripts  = {};
 
 // establish DDP connection
 var ddpClient = new ddp({
-  host: "g.gafo.us",
-  port: 80
-  //host: "localhost",
-  //port: 3000
+  //host: "g.gafo.us",
+  //port: 80
+  host: "localhost",
+  port: 3000
 });
 
 if (process.argv.length < 3) {
