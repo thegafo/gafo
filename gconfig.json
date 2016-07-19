@@ -1,9 +1,25 @@
 {
   "name": "Gabe's Mac",
   "scripts": {
+    "speak": {
+      "description": "Say hello world",
+      "execute": "say hello world"
+    },
     "openGoogle": {
       "description": "Open Google on Chrome",
       "execute": "python open_google.py"
+    },
+    "writeAndExecute": {
+      "description": "Write and execute arbitrary code",
+      "execute": "python write_file.py"
+    },
+    "openFacetime": {
+      "description": "Open Facetime",
+      "execute": "open /Applications/FaceTime.app"
+    },
+    "openMessage": {
+      "description": "Open iMessage",
+      "execute": "python send_imessage.py"
     },
     "openUrl": {
       "description": "Open url",
