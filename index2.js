@@ -175,11 +175,25 @@ function subscribeToSlaveData(userId, slaveId) {
 
       // when a new call is inserted
       observer.added = function(id, newValue) {
-        
+
         if (newValue.peripheralId) {
+
+
           console.log("THIS IS A PERIPHERAL CALL");
-          sendToPeripheral(peripherals[registeredSlave.peripherals[newValue.peripheralId]], newValue.message);
-        
+          console.log(registeredSlave);
+          if (peripherals[registeredSlave.peripherals[newValue.peripheralId]]) {
+            sendToPeripheral(peripherals[registeredSlave.peripherals[newValue.peripheralId]], newValue.message);
+          } else {
+            console.log("PERIPHERAL NOT CONNECTED");
+            ddpClient.call('logPeripheralRead', [newValue.peripheralId, "PERIPHERAL NOT CONNECTED"], function(err,result){ //sessionId is slaveId
+              if (err) return console.log(err);
+
+              // if slave is dead (server returns false if slave does not exist)
+              if (result == false) return;
+
+            });
+          }
+
         }
 
         if (newValue.scriptId) {
@@ -365,7 +379,7 @@ function connectToReadCharacteristic(peripheral, characteristics) {
         for (i in registeredSlave.peripherals) {
           if (registeredSlave.peripherals[i] == peripheral.uuid) registeredId = i;
         }
-  
+
         if (!registeredId) return console.log("REGISTERED ID NOT FOUND");
 
         ddpClient.call('logPeripheralRead', [registeredId, "" + data], function(err,result){ //sessionId is slaveId
@@ -391,6 +405,7 @@ function connectToWriteCharacteristic(peripheral, characteristics) {
       console.log("write characteristic match!");
       // TODO write to characteristic
       writeCharacteristics[peripheral.uuid] = characteristics[c];
+      peripherals[peripheral.uuid] = peripheral;
       //blink(peripheral);
       //sendToPeripheral(peripheral, '0');
       return;
@@ -425,4 +440,3 @@ function sendToPeripheral(peripheral, message) {
     console.log("peripheral not connected");
   }
 }
-
