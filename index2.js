@@ -11,7 +11,7 @@ var fs = require('fs');
 var util = require('util')
 
 var slaveConfiguration = {};
-var registeredScripts  = {};
+var registeredSlave  = {};
 
 // establish DDP connection
 var ddpClient = new ddp({
@@ -85,7 +85,7 @@ program
               clear();
               console.log("Connected to gafo! slaveId: " + sessionId);
               registerSlave(userId, sessionId, slaveConfiguration);
-
+              scan("poweredOn");
             });
 
           });
@@ -175,40 +175,48 @@ function subscribeToSlaveData(userId, slaveId) {
 
       // when a new call is inserted
       observer.added = function(id, newValue) {
+        
+        if (newValue.peripheralId) {
+          console.log("THIS IS A PERIPHERAL CALL");
+          sendToPeripheral(peripherals[registeredSlave.peripherals[newValue.peripheralId]], newValue.message);
+        
+        }
 
-        if (newValue.peripheralId) console.log("THIS IS A PERIPHERAL CALL");
-        if (newValue.scriptId) console.log("THIS IS A SCRIPT CALL");
+        if (newValue.scriptId) {
 
-        var scriptName = registeredSlave.scripts[newValue.scriptId];
+         console.log("THIS IS A SCRIPT CALL");
 
-        // get function data
-        var script = slaveConfiguration.scripts[scriptName];
+         var scriptName = registeredSlave.scripts[newValue.scriptId];
 
-        // get any parameters passed in call
-        var parameters = newValue.parameters || false;
+          // get function data
+          var script = slaveConfiguration.scripts[scriptName];
 
-        //TODO validate parameters
+          // get any parameters passed in call
+          var parameters = newValue.parameters || false;
 
-        // if script does not exist
-        if (!script) {
-          var statement = "ERROR: script " + scriptName + " not found."
-          console.log(statement);
-          ddpClient.call('addToCallResult', [id, {stderr: statement}]);
+          //TODO validate parameters
 
-        // if function exists
-        } else {
+          // if script does not exist
+          if (!script) {
+            var statement = "ERROR: script " + scriptName + " not found."
+            console.log(statement);
+            ddpClient.call('addToCallResult', [id, {stderr: statement}]);
 
-          var command = script.execute;
-          if (parameters) {
-            command += " '" + JSON.stringify(parameters) + "'"
+          // if function exists
+          } else {
+
+            var command = script.execute;
+            if (parameters) {
+              command += " '" + JSON.stringify(parameters) + "'"
+            }
+            console.log("Executing: " + command);
+
+            // execute script
+            exec(command, function(error, stdout, stderr) {
+              console.log(stdout);
+              ddpClient.call('addToCallResult', [id, {stderr: stderr, stdout: stdout, date: new Date()}]);
+            });
           }
-          console.log("Executing: " + command);
-
-          // execute script
-          exec(command, function(error, stdout, stderr) {
-            console.log(stdout);
-            ddpClient.call('addToCallResult', [id, {stderr: stderr, stdout: stdout, date: new Date()}]);
-          });
         }
 
       };
@@ -233,13 +241,8 @@ function pulse(userId, sessionId) {
 
 
 
-/////////////////////
-
-
-
-
-
-
+///////////////////// BLE PORTION
+// TODO extend to it's own package?
 
 
 var noble = require('noble');
@@ -259,7 +262,7 @@ var characteristics_discovered = {};
 
 var writeCharacteristics = {}; // key is peripheral id, value is write characteristic
 
-noble.on('stateChange', scan);
+//noble.on('stateChange', scan);
 
 function scan(state) {
   if (state === "poweredOn") {
@@ -277,9 +280,10 @@ function scan(state) {
 
 noble.on('discover', function(peripheral) {
   // if peripheral in confg
-  if (peripheral.uuid in configuration) {
+  if (peripheral.uuid in slaveConfiguration["peripherals"]) {
     console.log("peripheral found " + peripheral.uuid);
     connectToPeripheral(peripheral);
+    peripherals[peripheral.uuid] = peripheral;
   }
 
 });
@@ -314,7 +318,7 @@ function discoverServices(peripheral) {
 function connectToService(peripheral, services) {
  console.log("connecting to service ", peripheral.uuid);
   for (s in services) {
-    if (services[s].uuid == configuration[peripheral.uuid]["service_uuid"]) {
+    if (services[s].uuid == slaveConfiguration["peripherals"][peripheral.uuid]["service_uuid"]) {
       console.log("service match");
       return discoverCharacteristics(peripheral, services[s]);
     }
@@ -330,13 +334,13 @@ function discoverCharacteristics(peripheral, service) {
     characteristics_discovered[peripheral.uuid] = true;
 
     // connect to read characteristic
-    if (configuration[peripheral.uuid]["read_characteristic_uuid"])
+    if (slaveConfiguration["peripherals"][peripheral.uuid]["read_characteristic_uuid"])
       connectToReadCharacteristic(peripheral, characteristics);
     else
       console.log("read characteristic uuid not set");
 
     // connect to write characteristic
-    if (configuration[peripheral.uuid]["write_characteristic_uuid"])
+    if (slaveConfiguration["peripherals"][peripheral.uuid]["write_characteristic_uuid"])
       connectToWriteCharacteristic(peripheral, characteristics);
     else
       console.log("write characteristic uuid not set");
@@ -347,25 +351,30 @@ function discoverCharacteristics(peripheral, service) {
 function connectToReadCharacteristic(peripheral, characteristics) {
   console.log("connecting to read characteristic ", peripheral.uuid);
   for (c in characteristics) {
-    if (characteristics[c].uuid == configuration[peripheral.uuid]["read_characteristic_uuid"]) {
+    if (characteristics[c].uuid == slaveConfiguration["peripherals"][peripheral.uuid]["read_characteristic_uuid"]) {
       console.log("characteristic match");
       characteristics[c].subscribe(function(err) {
         if (err) return console.log(err);
         console.log("subscribed to characteristic!");
       });
       characteristics[c].on("data", function (data, isNotification) {
-        ddpClient.call('logPeripheralRead', [userId, sessionId, peripheral.uuid, message], function(err,result){ //sessionId is slaveId
+        var message = slaveConfiguration["peripherals"][peripheral.uuid]["name"] + " [" + moment().format("DD/MMM/YY:HH:mm:ss") + "] \"" + data + "\"";
+        console.log(message);
+        // get registered id
+        var registeredId = false;
+        for (i in registeredSlave.peripherals) {
+          if (registeredSlave.peripherals[i] == peripheral.uuid) registeredId = i;
+        }
+  
+        if (!registeredId) return console.log("REGISTERED ID NOT FOUND");
+
+        ddpClient.call('logPeripheralRead', [registeredId, "" + data], function(err,result){ //sessionId is slaveId
           if (err) return console.log(err);
 
           // if slave is dead (server returns false if slave does not exist)
           if (result == false) return;
 
-          setTimeout(function(){
-            pulse(userId, sessionId);
-          }, 10000);
-
         });
-        console.log(configuration[peripheral.uuid]["name"] + " [" + moment().format("DD/MMM/YY:HH:mm:ss") + "] \"" + data + "\"");
       });
       return;
     }
@@ -378,21 +387,12 @@ function connectToReadCharacteristic(peripheral, characteristics) {
 function connectToWriteCharacteristic(peripheral, characteristics) {
   console.log("connecting to write characteristic ", peripheral.uuid);
   for (c in characteristics) {
-    if (characteristics[c].uuid == configuration[peripheral.uuid]["write_characteristic_uuid"]) {
-      console.log("characteristic match");
+    if (characteristics[c].uuid == slaveConfiguration["peripherals"][peripheral.uuid]["write_characteristic_uuid"]) {
+      console.log("write characteristic match!");
       // TODO write to characteristic
       writeCharacteristics[peripheral.uuid] = characteristics[c];
-
-      blink(peripheral);
-
-      characteristics[c].write(new Buffer('0'), false, function(err) {
-        if (err) return console.log(err);
-        console.log("data written");
-        setTimeout(function() { characteristics[c].write(new Buffer('1'), false); console.log("data written"); }, 5000);
-        setTimeout(function() { peripheral.disconnect(); console.log("peripheral disconnected"); }, 10000);
-
-      });
-
+      //blink(peripheral);
+      //sendToPeripheral(peripheral, '0');
       return;
     }
   }
@@ -402,16 +402,22 @@ function connectToWriteCharacteristic(peripheral, characteristics) {
 }
 
 function blink(peripheral) {
-  sendToPeripheral(peripheral, "BLINK");
+  sendToPeripheral(peripheral, '1');
+  setTimeout(function() {
+    sendToPeripheral(peripheral, '0');
+  }, 5000);
   setTimeout(function() {
     blink(peripheral);
-  });
+  }, 10000);
 }
 
 
+
 function sendToPeripheral(peripheral, message) {
-  if (peripheral in writeCharacteristics) {
-    writeCharacteristics[peripheral].write(new Buffer(message), false, function(err) {
+  console.log("Attempting to send message to peripheral: " + message);
+  console.log(peripheral.uuid);
+  if (peripheral.uuid in writeCharacteristics) {
+    writeCharacteristics[peripheral.uuid].write(new Buffer(message), false, function(err) {
       if (err) return console.log(err);
       console.log("wrote to characteristic");
     })
@@ -419,3 +425,4 @@ function sendToPeripheral(peripheral, message) {
     console.log("peripheral not connected");
   }
 }
+

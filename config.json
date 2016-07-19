@@ -11,11 +11,17 @@
     }
   },
   "peripherals": {
-    "pir sensor": {
-      "uuid": "ce247aaa7180",
-      "service_uuid": "",
-      "read_characteristic_uuid": "",
-      "write_characteristic_uuid": ""
+   "ebd5a4b78d03": {
+      "name": "switch",
+      "service_uuid": "6e400001b5a3f393e0a9e50e24dcca9e",
+      "read_characteristic_uuid": "6e400003b5a3f393e0a9e50e24dcca9e",
+      "write_characteristic_uuid": "6e400002b5a3f393e0a9e50e24dcca9e"
+    },
+   "ce247aaa7180": {
+      "name": "pir sensor",
+      "service_uuid": "6e400001b5a3f393e0a9e50e24dcca9e",
+      "read_characteristic_uuid": "6e400003b5a3f393e0a9e50e24dcca9e",
+      "write_characteristic_uuid": "6e400002b5a3f393e0a9e50e24dcca9e"
     }
   }
 }
